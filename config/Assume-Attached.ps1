@@ -4,6 +4,7 @@
 # 1. Sets instanceType to "companion" in _Params-Instance-Repo.json
 # 2. Validates both instance and host repository paths
 # 3. Creates _Params-Working-Repo.json pointing to the host repository
+# 4. Adds companion repository to host's .git/info/exclude
 
 Write-Host "======================================" -ForegroundColor Cyan
 Write-Host "  Assume-Attached Configuration" -ForegroundColor Cyan
@@ -79,6 +80,194 @@ function Test-GitRepository {
     Write-Host ""
     
     return $true
+}
+
+function Get-RelativePath {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$From,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$To
+    )
+    
+    try {
+        # Use .NET's GetRelativePath method (requires PowerShell Core 6.0+ / .NET Core 2.0+)
+        # This handles cross-platform paths correctly
+        $relativePath = [System.IO.Path]::GetRelativePath($From, $To)
+        return $relativePath
+    } catch {
+        # Fallback: manual calculation for Windows PowerShell 5.1 and earlier
+        # (which use .NET Framework instead of .NET Core)
+        Write-Host "  [WARNING] Using fallback relative path calculation (Windows PowerShell 5.1 detected)" -ForegroundColor Yellow
+        
+        # Normalize paths
+        $fromNormalized = [System.IO.Path]::GetFullPath($From).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+        $toNormalized = [System.IO.Path]::GetFullPath($To).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+        
+        # Split into parts
+        $fromParts = $fromNormalized -split [regex]::Escape([System.IO.Path]::DirectorySeparatorChar)
+        $toParts = $toNormalized -split [regex]::Escape([System.IO.Path]::DirectorySeparatorChar)
+        
+        # Find common path length
+        $commonLength = 0
+        $minLength = [Math]::Min($fromParts.Length, $toParts.Length)
+        
+        for ($i = 0; $i -lt $minLength; $i++) {
+            if ($fromParts[$i] -eq $toParts[$i]) {
+                $commonLength++
+            } else {
+                break
+            }
+        }
+        
+        # Build relative path
+        $upLevels = $fromParts.Length - $commonLength
+        $relativeParts = @()
+        
+        for ($i = 0; $i -lt $upLevels; $i++) {
+            $relativeParts += ".."
+        }
+        
+        for ($i = $commonLength; $i -lt $toParts.Length; $i++) {
+            $relativeParts += $toParts[$i]
+        }
+        
+        if ($relativeParts.Length -eq 0) {
+            return "."
+        }
+        
+        return $relativeParts -join [System.IO.Path]::DirectorySeparatorChar
+    }
+}
+
+function Format-GitIgnorePattern {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$RelativePath
+    )
+    
+    # Convert to forward slashes (git convention)
+    $pattern = $RelativePath -replace '\\', '/'
+    
+    # Remove leading './' if present
+    $pattern = $pattern -replace '^\./', ''
+    
+    # Handle current directory case
+    if ($pattern -eq '.') {
+        Write-Host "  [WARNING] Instance and host appear to be in the same directory" -ForegroundColor Yellow
+        return $null
+    }
+    
+    # Add trailing slash to indicate directory
+    if (-not $pattern.EndsWith('/')) {
+        $pattern += '/'
+    }
+    
+    return $pattern
+}
+
+function Add-GitExcludePattern {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$HostRepoPath,
+        
+        [Parameter(Mandatory=$true)]
+        [string]$Pattern
+    )
+    
+    Write-Host "Configuring git exclude for companion repository..." -ForegroundColor Yellow
+    Write-Host "  Pattern: $Pattern" -ForegroundColor Gray
+    
+    # Construct path to exclude file
+    $excludeFilePath = Join-Path $HostRepoPath ".git"
+    $excludeFilePath = Join-Path $excludeFilePath "info"
+    $excludeDir = $excludeFilePath
+    $excludeFilePath = Join-Path $excludeFilePath "exclude"
+    
+    try {
+        # Create .git/info directory if it doesn't exist
+        if (-not (Test-Path $excludeDir)) {
+            Write-Host "  Creating .git/info directory..." -ForegroundColor Gray
+            New-Item -ItemType Directory -Path $excludeDir -Force | Out-Null
+            Write-Host "  [OK] Created directory" -ForegroundColor Green
+        }
+        
+        # Check if exclude file exists and read content
+        $existingContent = ""
+        $patternExists = $false
+        
+        if (Test-Path $excludeFilePath) {
+            $existingContent = Get-Content $excludeFilePath -Raw -ErrorAction Stop
+            
+            # Check for pattern variations
+            $patternVariations = @(
+                $Pattern,
+                $Pattern.TrimEnd('/'),
+                "/$Pattern",
+                "./$Pattern",
+                "./$($Pattern.TrimEnd('/'))"
+            )
+            
+            foreach ($variation in $patternVariations) {
+                # Check each line for matches (case-insensitive on Windows, sensitive on Linux)
+                $lines = $existingContent -split "`n"
+                foreach ($line in $lines) {
+                    $trimmedLine = $line.Trim()
+                    if ($trimmedLine -eq $variation) {
+                        $patternExists = $true
+                        break
+                    }
+                }
+                if ($patternExists) { break }
+            }
+        }
+        
+        if ($patternExists) {
+            Write-Host "  [SKIP] Pattern already exists in exclude file" -ForegroundColor Cyan
+            Write-Host ""
+            return $true
+        }
+        
+        # Prepare content to append
+        $newContent = ""
+        
+        # If file doesn't exist or is empty, add header comment
+        if ([string]::IsNullOrWhiteSpace($existingContent)) {
+            $newContent = "# Git exclude patterns for this repository`n"
+            $newContent += "# Added by Assume-Attached.ps1`n`n"
+        } else {
+            # Ensure existing content ends with newline
+            if (-not $existingContent.EndsWith("`n")) {
+                $newContent = "`n"
+            }
+        }
+        
+        # Add pattern with comment
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $newContent += "# Companion repository (added $timestamp)`n"
+        $newContent += "$Pattern`n"
+        
+        # Write to file
+        if ([string]::IsNullOrWhiteSpace($existingContent)) {
+            # Create new file
+            $newContent | Set-Content -Path $excludeFilePath -NoNewline -Encoding UTF8 -ErrorAction Stop
+        } else {
+            # Append to existing file
+            Add-Content -Path $excludeFilePath -Value $newContent -NoNewline -Encoding UTF8 -ErrorAction Stop
+        }
+        
+        Write-Host "  [OK] Added exclusion pattern to .git/info/exclude" -ForegroundColor Green
+        Write-Host ""
+        return $true
+        
+    } catch {
+        Write-Host "  [WARNING] Failed to update git exclude file" -ForegroundColor Yellow
+        Write-Host "  Reason: $($_.Exception.Message)" -ForegroundColor Gray
+        Write-Host "  This is non-critical - configuration will continue" -ForegroundColor Gray
+        Write-Host ""
+        return $false
+    }
 }
 
 # --------------------------------------------------
@@ -188,6 +377,21 @@ try {
 }
 
 # --------------------------------------------------
+# --- Configure Git Exclude for Companion Repository
+# --------------------------------------------------
+
+# Calculate relative path from host to instance
+$companionRepoRelative = Get-RelativePath -From $hostRepoAbsolute -To $instanceRepoAbsolute
+
+# Format for .gitignore convention
+$companionRepoRelativeFormatted = Format-GitIgnorePattern -RelativePath $companionRepoRelative
+
+# Add to git exclude if valid pattern
+if ($null -ne $companionRepoRelativeFormatted) {
+    Add-GitExcludePattern -HostRepoPath $hostRepoAbsolute -Pattern $companionRepoRelativeFormatted | Out-Null
+}
+
+# --------------------------------------------------
 # --- Display summary
 # --------------------------------------------------
 
@@ -208,5 +412,11 @@ Write-Host "  Type: $($workingJson.repoType)" -ForegroundColor Gray
 Write-Host "  Root: $($workingJson.repoRoot)" -ForegroundColor Gray
 Write-Host "  Push: $($workingJson.repoPush)" -ForegroundColor Gray
 Write-Host ""
+if ($null -ne $companionRepoRelativeFormatted) {
+    Write-Host "Git Exclude Configuration:" -ForegroundColor Yellow
+    Write-Host "  Pattern: $companionRepoRelativeFormatted" -ForegroundColor Gray
+    Write-Host "  Location: .git/info/exclude" -ForegroundColor Gray
+    Write-Host ""
+}
 Write-Host "Configuration complete!" -ForegroundColor Green
 Write-Host ""
