@@ -135,8 +135,7 @@ if (-not (Test-GitRepository -Path $instanceRepoAbsolute -RepoName "Instance Rep
 
 # Create workingJson object
 $workingJson = @{
-    repoType = $instanceJson.repoType
-    repoPush = $instanceJson.repoPush
+    repoSettings = $instanceJson.repoSettings
     repoRoot = $instanceRepoAbsolute
 }
 
@@ -167,9 +166,7 @@ Write-Host "Instance Repository:" -ForegroundColor Yellow
 Write-Host "  Path: $instanceRepoAbsolute" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Working Repository (points to Instance):" -ForegroundColor Yellow
-Write-Host "  Type: $($workingJson.repoType)" -ForegroundColor Gray
 Write-Host "  Root: $($workingJson.repoRoot)" -ForegroundColor Gray
-Write-Host "  Push: $($workingJson.repoPush)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Configuration complete!" -ForegroundColor Green
 Write-Host ""

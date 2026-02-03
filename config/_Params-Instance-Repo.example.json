@@ -1,7 +1,14 @@
 {
-    "instanceType":  "standalone",
+    "instanceType":  "companion",
     "instanceRepoRoot":  "..",
     "hostRepoRoot":  "../..",
-    "repoType":  "regular",
-    "repoPush":  "push origin main"
+    "repoSettings":  {
+                         "repoType":  "regular",
+                         "repoPushCommands":  "push origin main",
+                         "initGitCommands":  "",
+                         "notebooks":  {
+                                           "sourcePath":  "",
+                                           "destinationPath":  ""
+                                       }
+                     }
 }

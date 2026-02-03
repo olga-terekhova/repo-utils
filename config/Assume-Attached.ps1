@@ -358,8 +358,7 @@ try {
 
 # Create workingJson object
 $workingJson = @{
-    repoType = $hostJson.repoType
-    repoPush = $hostJson.repoPush
+    repoSettings = $hostJson.repoSettings
     repoRoot = $hostRepoAbsolute
 }
 
@@ -408,9 +407,7 @@ Write-Host "Host Repository:" -ForegroundColor Yellow
 Write-Host "  Path: $hostRepoAbsolute" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Working Repository (points to Host):" -ForegroundColor Yellow
-Write-Host "  Type: $($workingJson.repoType)" -ForegroundColor Gray
 Write-Host "  Root: $($workingJson.repoRoot)" -ForegroundColor Gray
-Write-Host "  Push: $($workingJson.repoPush)" -ForegroundColor Gray
 Write-Host ""
 if ($null -ne $companionRepoRelativeFormatted) {
     Write-Host "Git Exclude Configuration:" -ForegroundColor Yellow
