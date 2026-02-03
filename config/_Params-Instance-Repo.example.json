@@ -1,0 +1,7 @@
+{
+    "instanceType":  "standalone",
+    "instanceRepoRoot":  "..",
+    "hostRepoRoot":  "../..",
+    "repoType":  "regular",
+    "repoPush":  "push origin main"
+}
