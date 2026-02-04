@@ -57,7 +57,7 @@ else {
 }
 
 # Validate destination path
-if (-not (Test-Path $SourcePath)) {
+if (-not (Test-Path $DestinationPath)) {
     Write-Error "Destination directory doesn't exist: $DestinationPath"
     exit 1
 } 

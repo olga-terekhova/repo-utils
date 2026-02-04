@@ -193,7 +193,7 @@ function Invoke-GitWorkflow {
 	    Invoke-GitStatus
             
 	    Write-Host "`nCommited changes will be pushed using these commands: "
-	    Write-Host "  $PushCommand"  -ForegroundColor Yellow
+	    Write-Host "  $PushCommands"  -ForegroundColor Yellow
 
             if (-not (Get-Confirmation "Proceed with pushing?")) {
                 Write-Host "Operation cancelled."

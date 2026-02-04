@@ -31,14 +31,14 @@ if($RepoType -eq "notebooks"){
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "Syncing notebooks" -ForegroundColor Cyan
     Write-Host "========================================`n" -ForegroundColor Cyan
-    . .\Sync-Notebooks.PS1
+    . .\Sync-Notebooks.PS1 -paramPath $paramPath
 }
 
 # Review and sync repo
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "Reviewing and syncing repo" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
-. .\Sync-Repo.PS1
+. .\Sync-Repo.PS1 -paramPath $paramPath
 
 
 
