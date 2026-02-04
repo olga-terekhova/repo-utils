@@ -121,11 +121,6 @@ function Invoke-GitPush {
         }
     }
 
-
-    $fullCommand = $PushCommands # to change
-    Write-Host "`n[$(Get-Date -Format 'HH:mm:ss')] $fullCommand "  -ForegroundColor Cyan
-    # Invoke-Expression $fullCommand | Out-Default
-    Write-Host "Placeholder"
 }
 
 # Function: Ask for confirmation
