@@ -22,6 +22,7 @@ if (-not (Test-Path $paramPath)) {
 $paramJson = Get-Content $paramPath -Raw | ConvertFrom-Json
 $SourcePath = $paramJson.repoSettings.notebooks.sourcePath
 $DestInput = $paramJson.repoSettings.notebooks.destinationPath
+$WorkRepoRoot = $paramJson.repoRoot
 
 
 #
@@ -43,7 +44,7 @@ Write-Host "`n[$(Get-Date -Format 'HH:mm:ss')] Validating source and destination
 Write-Host "User-provided Destination Input: $DestInput"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $DestinationPath = if ([System.IO.Path]::IsPathRooted($DestInput)) { $DestInput } 
-                   else { [System.IO.Path]::GetFullPath((Join-Path $ScriptDir $DestInput)) }
+                   else { [System.IO.Path]::GetFullPath((Join-Path $WorkRepoRoot $DestInput)) }
 Write-Host "Full Destination Path: $DestinationPath"              
 Write-Host ""
 
