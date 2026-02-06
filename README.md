@@ -49,5 +49,8 @@ Repo-utils maintains separate settings for itself and for the host.
     - Implement and test changes  
     - Switch between attached mode (testing) and detached mode (committing changes)
     - Run `.\scripts\Sync-All.ps1` to commit changes to your repo-utils fork 
+    - To propagate changes to clones attached to other projects:
+        - Detach a clone to pull updates from the main repo-utils repository
+        - Attach the clone back into attached mode
 
 
